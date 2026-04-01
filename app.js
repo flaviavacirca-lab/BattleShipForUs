@@ -52,8 +52,9 @@ function init() {
 
 // Render both boards
 function renderBoards() {
-  renderBoard("board-d", game.boardD, false); // D's board — show ships to D
-  renderBoard("board-f", game.boardF, false);
+  // Each player sees their own ships but not the opponent's
+  renderBoard("board-d", game.boardD, game.currentPlayer !== "D");
+  renderBoard("board-f", game.boardF, game.currentPlayer !== "F");
   highlightActiveBoard();
 }
 
@@ -66,7 +67,7 @@ function renderBoard(containerId, board, hideShips) {
   headerRow.className = "grid-row header-row";
   headerRow.innerHTML = '<div class="grid-cell corner"></div>';
   for (let c = 0; c < BOARD_SIZE; c++) {
-    headerRow.innerHTML += `<div class="grid-cell header">${c}</div>`;
+    headerRow.innerHTML += `<div class="grid-cell header">${c + 1}</div>`;
   }
   container.appendChild(headerRow);
 
@@ -117,9 +118,13 @@ function highlightActiveBoard() {
   if (game.currentPlayer === "D") {
     dSection.classList.remove("active-target");
     fSection.classList.add("active-target");
+    document.querySelector("#section-d .board-label").textContent = "D's Fleet (yours)";
+    document.querySelector("#section-f .board-label").textContent = "F's Fleet — tap to fire!";
   } else {
     fSection.classList.remove("active-target");
     dSection.classList.add("active-target");
+    document.querySelector("#section-f .board-label").textContent = "F's Fleet (yours)";
+    document.querySelector("#section-d .board-label").textContent = "D's Fleet — tap to fire!";
   }
 }
 
@@ -315,6 +320,11 @@ function dismissQuestion() {
 
 // Game over
 function showGameOver(winner) {
+  // Reveal all ships on both boards
+  renderBoard("board-d", game.boardD, false);
+  renderBoard("board-f", game.boardF, false);
+  document.querySelector("#section-d .board-label").textContent = "D's Fleet";
+  document.querySelector("#section-f .board-label").textContent = "F's Fleet";
   const overlay = document.getElementById("game-over-overlay");
   overlay.classList.remove("hidden");
   document.getElementById("winner-text").textContent = `${winner} wins!`;
