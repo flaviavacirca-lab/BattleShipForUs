@@ -517,75 +517,210 @@ body {
   .question-text { font-size: 1rem; padding: 15px; }
 }
 
-/* Pass-and-Play Handoff Screen */
-.handoff-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
+/* ═══════════════════════════════════════ */
+/* LOBBY                                  */
+/* ═══════════════════════════════════════ */
+
+#lobby-screen {
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 150;
-  animation: fadeIn 0.3s;
+  background: var(--bg);
 }
 
-.handoff-overlay.hidden { display: none; }
-
-.handoff-content {
+.lobby-container {
   text-align: center;
+  max-width: 420px;
+  width: 90%;
   animation: slideUp 0.4s ease;
 }
 
-.handoff-label {
-  font-size: 1.2rem;
+.lobby-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.lobby-subtitle {
   color: var(--text-dim);
-  margin-bottom: 15px;
-}
-
-.handoff-name {
-  font-size: 5rem;
-  font-weight: 800;
-  margin: 10px 0;
-  letter-spacing: 2px;
-}
-
-.handoff-d {
-  background: linear-gradient(135deg, #e94560, #ff6b8a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.handoff-f {
-  background: linear-gradient(135deg, #4ecdc4, #2fa89e);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.handoff-sub {
   font-size: 0.9rem;
-  color: var(--text-dim);
-  margin: 15px 0 25px;
+  margin-bottom: 30px;
 }
 
-.handoff-btn {
-  padding: 14px 40px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
-  color: #fff;
+.lobby-section { margin-top: 20px; }
+.lobby-section.hidden { display: none; }
+
+.lobby-error {
+  color: var(--accent);
+  font-size: 0.85rem;
+  min-height: 1.2em;
+  margin-bottom: 5px;
+}
+
+.lobby-label {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+}
+
+.lobby-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
   border: none;
-  border-radius: 30px;
-  font-size: 1.1rem;
+  border-radius: var(--radius);
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
 }
 
-.handoff-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 25px rgba(233, 69, 96, 0.4);
+.lobby-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.lobby-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.lobby-btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  color: #fff;
 }
+
+.lobby-btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.15);
+  flex-shrink: 0;
+  width: auto;
+  padding: 12px 24px;
+}
+
+.lobby-divider {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 20px 0;
+  position: relative;
+}
+
+.lobby-divider::before,
+.lobby-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+.lobby-divider::before { left: 0; }
+.lobby-divider::after { right: 0; }
+
+.lobby-join-row {
+  display: flex;
+  gap: 10px;
+}
+
+.lobby-input {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.lobby-input::placeholder {
+  letter-spacing: normal;
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.lobby-input:focus {
+  border-color: var(--accent-soft);
+}
+
+.room-code-display {
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--gold);
+  background: var(--surface);
+  padding: 15px 25px;
+  border-radius: 12px;
+  display: inline-block;
+  margin: 10px 0;
+  user-select: all;
+}
+
+.role-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 18px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+.role-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+
+.role-btn-d {
+  background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.1));
+  border-color: var(--accent);
+  color: var(--accent-soft);
+}
+
+.role-btn-f {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.2), rgba(78, 205, 196, 0.1));
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.waiting-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--surface);
+  border-top-color: var(--accent-soft);
+  border-radius: 50%;
+  margin: 0 auto 15px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Player badge in game header */
+.player-badge {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Waiting text in question modal (for non-defender) */
+.waiting-text {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 10px 0;
+}
+
+.hidden { display: none !important; }
 
 /* How to Play */
 .help-panel {

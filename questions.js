@@ -196,25 +196,10 @@ function diceToLevel(roll) {
   return 4; // roll === 6
 }
 
-// Question engine
+// Question engine — works with externally managed answered state (Supabase)
 class QuestionEngine {
   constructor() {
-    this.loadAnswered();
-  }
-
-  // Load answered questions from localStorage
-  loadAnswered() {
-    const saved = localStorage.getItem("bdn_answered");
-    if (saved) {
-      this.answered = JSON.parse(saved);
-    } else {
-      this.answered = { D: [], F: [] };
-    }
-  }
-
-  // Save answered questions to localStorage
-  saveAnswered() {
-    localStorage.setItem("bdn_answered", JSON.stringify(this.answered));
+    this.answered = { D: [], F: [] };
   }
 
   // Get available questions for a player at a level
@@ -231,12 +216,11 @@ class QuestionEngine {
     return available[Math.floor(Math.random() * available.length)];
   }
 
-  // Mark a question as answered by a player
+  // Mark a question as answered by a player (in-memory only; caller persists)
   markAnswered(player, questionId) {
     if (!this.answered[player]) this.answered[player] = [];
     if (!this.answered[player].includes(questionId)) {
       this.answered[player].push(questionId);
-      this.saveAnswered();
     }
   }
 
@@ -253,22 +237,19 @@ class QuestionEngine {
     return stats;
   }
 
-  // Reset progress for a player
+  // Reset progress for a player (in-memory only; caller persists)
   resetPlayer(player) {
     this.answered[player] = [];
-    this.saveAnswered();
   }
 
   // Reset all progress
   resetAll() {
     this.answered = { D: [], F: [] };
-    this.saveAnswered();
   }
 
   // Reset progress for a player at a specific level
   resetPlayerLevel(player, level) {
     const levelIds = QUESTION_BANK[level].map(q => q.id);
     this.answered[player] = (this.answered[player] || []).filter(id => !levelIds.includes(id));
-    this.saveAnswered();
   }
 }

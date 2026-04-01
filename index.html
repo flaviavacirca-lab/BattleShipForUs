@@ -10,103 +10,149 @@
 </head>
 <body>
 
-  <!-- Header -->
-  <div class="header">
-    <h1>Battleship Date Night</h1>
-    <p class="subtitle">Sink ships. Ask questions. Get closer.</p>
-  </div>
+  <!-- ═══════════════════════════════════════ -->
+  <!-- LOBBY SCREEN                           -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="lobby-screen">
+    <div class="lobby-container">
+      <h1 class="lobby-title">Battleship Date Night</h1>
+      <p class="lobby-subtitle">Sink ships. Ask questions. Get closer.</p>
 
-  <!-- Turn Indicator -->
-  <div class="turn-indicator turn-d" id="turn-indicator">D's Turn</div>
+      <div class="lobby-error" id="lobby-error"></div>
 
-  <!-- Floating message -->
-  <div class="float-message" id="float-message"></div>
-
-  <!-- Game Boards -->
-  <div class="game-area">
-    <div class="board-section" id="section-d">
-      <div class="board-label">D's Fleet</div>
-      <div id="board-d"></div>
-      <div class="ship-list" id="ships-d"></div>
-    </div>
-    <div class="board-section" id="section-f">
-      <div class="board-label">F's Fleet</div>
-      <div id="board-f"></div>
-      <div class="ship-list" id="ships-f"></div>
-    </div>
-  </div>
-
-  <!-- Controls -->
-  <div class="controls-bar">
-    <button class="ctrl-btn" onclick="newGame()">New Game</button>
-    <button class="ctrl-btn" onclick="resetPlayerD()">Reset D's Questions</button>
-    <button class="ctrl-btn" onclick="resetPlayerF()">Reset F's Questions</button>
-    <button class="ctrl-btn" onclick="resetAllProgress()">Reset All Progress</button>
-    <button class="ctrl-btn" onclick="toggleHelp()">How to Play</button>
-    <button class="sound-btn" id="sound-toggle" onclick="toggleSound()">🔊</button>
-  </div>
-
-  <!-- How to Play -->
-  <div class="help-panel hidden" id="help-panel">
-    <div class="help-content">
-      <h3>How to Play</h3>
-      <div class="help-grid">
-        <div class="help-item">
-          <div class="help-icon">🎯</div>
-          <div>
-            <strong>Take Turns</strong>
-            <p>Tap a cell on your opponent's grid to fire. Hits show 💥, misses show •</p>
-          </div>
-        </div>
-        <div class="help-item">
-          <div class="help-icon">🎲</div>
-          <div>
-            <strong>Hit = Question</strong>
-            <p>Every hit rolls a die. The roll determines the question depth: 1–2 Light, 3–4 Reflective, 5 Deep, 6 Vulnerable</p>
-          </div>
-        </div>
-        <div class="help-item">
-          <div class="help-icon">💬</div>
-          <div>
-            <strong>Answer or Skip</strong>
-            <p>The defender answers the question. Mark it "Answered" to track progress, or "Not Answered" to see it again later. Skip swaps for another question at the same level.</p>
-          </div>
-        </div>
-        <div class="help-item">
-          <div class="help-icon">💾</div>
-          <div>
-            <strong>Progress Saves</strong>
-            <p>Answered questions are remembered per player across games. Check the stats below to see your progress!</p>
-          </div>
+      <!-- Create / Join -->
+      <div id="lobby-create-join" class="lobby-section">
+        <button id="btn-create" class="lobby-btn lobby-btn-primary" onclick="handleCreateRoom()">Create Room</button>
+        <div class="lobby-divider"><span>or join an existing room</span></div>
+        <div class="lobby-join-row">
+          <input id="room-code-input" class="lobby-input" placeholder="Enter room code" maxlength="6"
+                 onkeydown="if(event.key==='Enter')handleJoinRoom()"
+                 oninput="this.value=this.value.toUpperCase()">
+          <button id="btn-join" class="lobby-btn lobby-btn-secondary" onclick="handleJoinRoom()">Join</button>
         </div>
       </div>
-      <div class="help-ships">
-        <strong>Ships:</strong> Carrier (5) · Battleship (4) · Cruiser (3) · Submarine (3) · Destroyer (2)
+
+      <!-- Room created — show code -->
+      <div id="lobby-room-info" class="lobby-section hidden">
+        <p class="lobby-label">Share this code with your partner:</p>
+        <div class="room-code-display" id="display-room-code"></div>
+      </div>
+
+      <!-- Role selection -->
+      <div id="lobby-role-selection" class="lobby-section hidden">
+        <p class="lobby-label">Choose your player:</p>
+        <div class="role-buttons">
+          <button id="role-btn-d" class="role-btn role-btn-d" onclick="handleSelectRole('D')">Play as D</button>
+          <button id="role-btn-f" class="role-btn role-btn-f" onclick="handleSelectRole('F')">Play as F</button>
+        </div>
+      </div>
+
+      <!-- Waiting for opponent -->
+      <div id="lobby-waiting" class="lobby-section hidden">
+        <div class="waiting-spinner"></div>
+        <p class="lobby-label">Waiting for your partner to join...</p>
       </div>
     </div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-area">
-    <div class="stats-panel">
-      <h3>D's Question Progress</h3>
-      <div id="stats-d"></div>
+  <!-- ═══════════════════════════════════════ -->
+  <!-- GAME SCREEN                            -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="game-screen" class="hidden">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>Battleship Date Night</h1>
+      <div class="player-badge" id="player-badge"></div>
     </div>
-    <div class="stats-panel">
-      <h3>F's Question Progress</h3>
-      <div id="stats-f"></div>
+
+    <!-- Turn Indicator -->
+    <div class="turn-indicator turn-d" id="turn-indicator">Your Turn</div>
+
+    <!-- Floating message -->
+    <div class="float-message" id="float-message"></div>
+
+    <!-- Game Boards -->
+    <div class="game-area">
+      <div class="board-section" id="section-d">
+        <div class="board-label">D's Fleet</div>
+        <div id="board-d"></div>
+        <div class="ship-list" id="ships-d"></div>
+      </div>
+      <div class="board-section" id="section-f">
+        <div class="board-label">F's Fleet</div>
+        <div id="board-f"></div>
+        <div class="ship-list" id="ships-f"></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <button class="ctrl-btn" onclick="newGame()">New Game</button>
+      <button class="ctrl-btn" onclick="resetPlayerD()">Reset D's Questions</button>
+      <button class="ctrl-btn" onclick="resetPlayerF()">Reset F's Questions</button>
+      <button class="ctrl-btn" onclick="resetAllProgress()">Reset All Progress</button>
+      <button class="ctrl-btn" onclick="toggleHelp()">How to Play</button>
+      <button class="ctrl-btn" onclick="leaveRoom()">Leave Room</button>
+      <button class="sound-btn" id="sound-toggle" onclick="toggleSound()">🔊</button>
+    </div>
+
+    <!-- How to Play -->
+    <div class="help-panel hidden" id="help-panel">
+      <div class="help-content">
+        <h3>How to Play</h3>
+        <div class="help-grid">
+          <div class="help-item">
+            <div class="help-icon">🎯</div>
+            <div>
+              <strong>Take Turns</strong>
+              <p>Tap a cell on your opponent's grid to fire. Hits show 💥, misses show •</p>
+            </div>
+          </div>
+          <div class="help-item">
+            <div class="help-icon">🎲</div>
+            <div>
+              <strong>Hit = Question</strong>
+              <p>Every hit rolls a die. The roll determines the question depth: 1–2 Light, 3–4 Reflective, 5 Deep, 6 Vulnerable</p>
+            </div>
+          </div>
+          <div class="help-item">
+            <div class="help-icon">💬</div>
+            <div>
+              <strong>Answer or Skip</strong>
+              <p>The defender answers the question. Mark it "Answered" to track progress, or "Not Answered" to see it again later. Skip swaps for another question at the same level.</p>
+            </div>
+          </div>
+          <div class="help-item">
+            <div class="help-icon">🌐</div>
+            <div>
+              <strong>Play Remotely</strong>
+              <p>Each player opens the game on their own device with the same room code. Everything syncs in real time!</p>
+            </div>
+          </div>
+        </div>
+        <div class="help-ships">
+          <strong>Ships:</strong> Carrier (5) · Battleship (4) · Cruiser (3) · Submarine (3) · Destroyer (2)
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-area">
+      <div class="stats-panel">
+        <h3>D's Question Progress</h3>
+        <div id="stats-d"></div>
+      </div>
+      <div class="stats-panel">
+        <h3>F's Question Progress</h3>
+        <div id="stats-f"></div>
+      </div>
     </div>
   </div>
 
-  <!-- Pass-and-Play Handoff Screen -->
-  <div class="handoff-overlay hidden" id="handoff-screen">
-    <div class="handoff-content">
-      <p class="handoff-label">Pass the device to</p>
-      <div class="handoff-name handoff-d" id="handoff-player">D</div>
-      <p class="handoff-sub">Tap the button when you're ready</p>
-      <button class="handoff-btn" onclick="dismissHandoff()">I'm Ready</button>
-    </div>
-  </div>
+  <!-- ═══════════════════════════════════════ -->
+  <!-- MODALS / OVERLAYS                      -->
+  <!-- ═══════════════════════════════════════ -->
 
   <!-- Question Modal -->
   <div class="modal-overlay hidden" id="question-modal">
@@ -117,12 +163,15 @@
   <div class="game-over-overlay hidden" id="game-over-overlay">
     <h2>Game Over!</h2>
     <p id="winner-text"></p>
-    <button onclick="init()">Play Again</button>
+    <button onclick="newGame()">Play Again</button>
   </div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="questions.js"></script>
   <script src="game.js"></script>
+  <script src="multiplayer.js"></script>
   <script src="app.js"></script>
 
 </body>

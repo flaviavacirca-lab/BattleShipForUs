@@ -85,6 +85,25 @@ class Board {
   allSunk() {
     return this.ships.length > 0 && this.ships.every(s => s.hits === s.size);
   }
+
+  // Serialize board state to a plain object for Supabase
+  serialize() {
+    return {
+      grid: this.grid.map(row => [...row]),
+      ships: this.ships.map(s => ({
+        name: s.name, size: s.size, hits: s.hits,
+        cells: s.cells.map(c => ({ r: c.r, c: c.c }))
+      }))
+    };
+  }
+
+  // Reconstruct a Board from serialized data
+  static fromState(data) {
+    const board = Object.create(Board.prototype);
+    board.grid = data.grid;
+    board.ships = data.ships;
+    return board;
+  }
 }
 
 // Game state manager
@@ -155,5 +174,28 @@ class BattleshipGame {
 
   switchTurn() {
     this.currentPlayer = this.currentPlayer === "D" ? "F" : "D";
+  }
+
+  // Serialize game state to a plain object for Supabase
+  serialize() {
+    return {
+      boardD: this.boardD.serialize(),
+      boardF: this.boardF.serialize(),
+      currentPlayer: this.currentPlayer,
+      phase: this.phase,
+      winner: this.winner
+    };
+  }
+
+  // Reconstruct a BattleshipGame from serialized data
+  static fromState(data) {
+    const g = Object.create(BattleshipGame.prototype);
+    g.boardD = Board.fromState(data.boardD);
+    g.boardF = Board.fromState(data.boardF);
+    g.currentPlayer = data.currentPlayer;
+    g.phase = data.phase;
+    g.winner = data.winner;
+    g.lastAttackResult = null;
+    return g;
   }
 }
