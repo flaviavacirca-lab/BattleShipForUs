@@ -7,6 +7,7 @@ let currentDiceRoll = null;
 let currentLevel = null;
 let currentDefender = null;
 let soundEnabled = true;
+let isFirstTurn = true; // Skip handoff screen on very first turn
 
 // Audio context for sound effects
 let audioCtx = null;
@@ -42,12 +43,14 @@ function playDiceSound() { for (let i = 0; i < 5; i++) setTimeout(() => playTone
 function init() {
   game = new BattleshipGame();
   questionEngine = new QuestionEngine();
+  isFirstTurn = true;
   renderBoards();
   updateTurnIndicator();
   updateShipStatus();
   updateStats();
   document.getElementById("game-over-overlay").classList.add("hidden");
   document.getElementById("question-modal").classList.add("hidden");
+  document.getElementById("handoff-screen").classList.add("hidden");
 }
 
 // Render both boards
@@ -114,7 +117,6 @@ function renderBoard(containerId, board, hideShips) {
 function highlightActiveBoard() {
   const dSection = document.getElementById("section-d");
   const fSection = document.getElementById("section-f");
-  // The active board to click is the opponent's
   if (game.currentPlayer === "D") {
     dSection.classList.remove("active-target");
     fSection.classList.add("active-target");
@@ -135,20 +137,31 @@ function updateTurnIndicator() {
 }
 
 function updateShipStatus() {
-  updateShipList("ships-d", game.boardD);
-  updateShipList("ships-f", game.boardF);
+  // Only show detailed hit counts for your own ships
+  updateShipList("ships-d", game.boardD, game.currentPlayer === "D");
+  updateShipList("ships-f", game.boardF, game.currentPlayer === "F");
 }
 
-function updateShipList(containerId, board) {
+function updateShipList(containerId, board, showDamage) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   board.ships.forEach(ship => {
     const el = document.createElement("div");
-    el.className = "ship-status" + (ship.hits === ship.size ? " sunk" : "");
-    const pips = Array.from({ length: ship.size }, (_, i) =>
-      `<span class="pip ${i < ship.hits ? "pip-hit" : ""}"></span>`
-    ).join("");
-    el.innerHTML = `<span class="ship-name">${ship.name}</span><span class="pips">${pips}</span>`;
+    const isSunk = ship.hits === ship.size;
+    el.className = "ship-status" + (isSunk ? " sunk" : "");
+    if (showDamage || isSunk) {
+      // Show hit pips for your own ships or sunk ships (sunk is public info)
+      const pips = Array.from({ length: ship.size }, (_, i) =>
+        `<span class="pip ${i < ship.hits ? "pip-hit" : ""}"></span>`
+      ).join("");
+      el.innerHTML = `<span class="ship-name">${ship.name}</span><span class="pips">${pips}</span>`;
+    } else {
+      // Opponent's unsunk ships — show name and size but not damage
+      const pips = Array.from({ length: ship.size }, () =>
+        `<span class="pip"></span>`
+      ).join("");
+      el.innerHTML = `<span class="ship-name">${ship.name}</span><span class="pips">${pips}</span>`;
+    }
     container.appendChild(el);
   });
 }
@@ -178,13 +191,31 @@ function handleAttack(row, col) {
   } else {
     playMissSound();
     showMessage("Miss", "miss");
-    updateTurnIndicator();
   }
 
   if (result.triggerQuestion) {
-    // Delay to let the hit register visually
+    // Delay to let the hit register visually, then show question
     setTimeout(() => triggerQuestion(result.defender), 800);
+  } else {
+    // Miss — show handoff screen before next turn
+    setTimeout(() => showHandoff(), 600);
   }
+}
+
+// Pass-and-play handoff screen
+function showHandoff() {
+  const screen = document.getElementById("handoff-screen");
+  const nextPlayer = game.currentPlayer;
+  document.getElementById("handoff-player").textContent = nextPlayer;
+  document.getElementById("handoff-player").className = "handoff-name handoff-" + nextPlayer.toLowerCase();
+  screen.classList.remove("hidden");
+}
+
+function dismissHandoff() {
+  document.getElementById("handoff-screen").classList.add("hidden");
+  renderBoards();
+  updateTurnIndicator();
+  updateShipStatus();
 }
 
 // Show a brief floating message
@@ -212,8 +243,7 @@ function showDiceAnimation(roll, callback) {
   const content = document.getElementById("modal-content-inner");
   modal.classList.remove("hidden");
 
-  // Dice animation
-  const diceFrames = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+  const diceFrames = ["\u2680", "\u2681", "\u2682", "\u2683", "\u2684", "\u2685"];
   const finalDice = diceFrames[roll - 1];
 
   content.innerHTML = `
@@ -247,15 +277,14 @@ function showQuestion() {
   const levelInfo = LEVEL_INFO[currentLevel];
 
   if (!question) {
-    // All questions answered for this level
     content.innerHTML = `
       <div class="question-container">
         <div class="question-header">
-          <span class="dice-result">🎲 ${currentDiceRoll}</span>
+          <span class="dice-result">\ud83c\udfb2 ${currentDiceRoll}</span>
           <span class="level-badge" style="background:${levelInfo.color}">${levelInfo.emoji} Level ${currentLevel}: ${levelInfo.name}</span>
         </div>
         <div class="question-exhausted">
-          <p>🎉 ${currentDefender} has answered all Level ${currentLevel} questions!</p>
+          <p>\ud83c\udf89 ${currentDefender} has answered all Level ${currentLevel} questions!</p>
           <p>Amazing progress!</p>
         </div>
         <div class="question-actions">
@@ -270,18 +299,18 @@ function showQuestion() {
   content.innerHTML = `
     <div class="question-container">
       <div class="question-header">
-        <span class="dice-result">🎲 ${currentDiceRoll}</span>
+        <span class="dice-result">\ud83c\udfb2 ${currentDiceRoll}</span>
         <span class="level-badge" style="background:${levelInfo.color}">${levelInfo.emoji} Level ${currentLevel}: ${levelInfo.name}</span>
       </div>
       <div class="question-responder">
         <span class="responder-name">${currentDefender}</span> is answering
       </div>
-      <div class="question-text">"${question.text}"</div>
-      <div class="question-note">This will be saved for <strong>${currentDefender}</strong>'s profile</div>
+      <div class="question-text">\u201c${question.text}\u201d</div>
+      <div class="question-note">This will be saved for <strong>${currentDefender}</strong>\u2019s profile</div>
       <div class="question-actions">
-        <button class="btn btn-answered" onclick="markAnswered()">✓ Answered</button>
-        <button class="btn btn-not-answered" onclick="markNotAnswered()">✗ Not Answered</button>
-        <button class="btn btn-skip" onclick="skipQuestion()">↻ Skip Question</button>
+        <button class="btn btn-answered" onclick="markAnswered()">\u2713 Answered</button>
+        <button class="btn btn-not-answered" onclick="markNotAnswered()">\u2717 Not Answered</button>
+        <button class="btn btn-skip" onclick="skipQuestion()">\u21bb Skip Question</button>
       </div>
     </div>
   `;
@@ -296,7 +325,6 @@ function markAnswered() {
 }
 
 function markNotAnswered() {
-  // Don't mark anything — question remains available
   dismissQuestion();
 }
 
@@ -314,13 +342,12 @@ function resetLevelAndRetry() {
 function dismissQuestion() {
   document.getElementById("question-modal").classList.add("hidden");
   game.questionDone();
-  renderBoards();
-  updateTurnIndicator();
+  // After question, show handoff screen for the next player
+  showHandoff();
 }
 
 // Game over
 function showGameOver(winner) {
-  // Reveal all ships on both boards
   renderBoard("board-d", game.boardD, false);
   renderBoard("board-f", game.boardF, false);
   document.querySelector("#section-d .board-label").textContent = "D's Fleet";
@@ -387,7 +414,12 @@ function newGame() {
 function toggleSound() {
   soundEnabled = !soundEnabled;
   const btn = document.getElementById("sound-toggle");
-  btn.textContent = soundEnabled ? "🔊" : "🔇";
+  btn.textContent = soundEnabled ? "\ud83d\udd0a" : "\ud83d\udd07";
+}
+
+function toggleHelp() {
+  const panel = document.getElementById("help-panel");
+  panel.classList.toggle("hidden");
 }
 
 // Start

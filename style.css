@@ -516,3 +516,138 @@ body {
   .modal-content { padding: 20px; }
   .question-text { font-size: 1rem; padding: 15px; }
 }
+
+/* Pass-and-Play Handoff Screen */
+.handoff-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+  animation: fadeIn 0.3s;
+}
+
+.handoff-overlay.hidden { display: none; }
+
+.handoff-content {
+  text-align: center;
+  animation: slideUp 0.4s ease;
+}
+
+.handoff-label {
+  font-size: 1.2rem;
+  color: var(--text-dim);
+  margin-bottom: 15px;
+}
+
+.handoff-name {
+  font-size: 5rem;
+  font-weight: 800;
+  margin: 10px 0;
+  letter-spacing: 2px;
+}
+
+.handoff-d {
+  background: linear-gradient(135deg, #e94560, #ff6b8a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.handoff-f {
+  background: linear-gradient(135deg, #4ecdc4, #2fa89e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.handoff-sub {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin: 15px 0 25px;
+}
+
+.handoff-btn {
+  padding: 14px 40px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  color: #fff;
+  border: none;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+}
+
+.handoff-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(233, 69, 96, 0.4);
+}
+
+/* How to Play */
+.help-panel {
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 0 20px;
+  animation: slideUp 0.3s ease;
+}
+
+.help-panel.hidden { display: none; }
+
+.help-content {
+  background: var(--bg-light);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.help-content h3 {
+  text-align: center;
+  margin-bottom: 15px;
+  color: var(--accent-soft);
+  font-size: 1rem;
+}
+
+.help-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.help-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.help-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  width: 35px;
+  text-align: center;
+}
+
+.help-item strong {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.help-item p {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.help-ships {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.help-ships strong { color: var(--text); }

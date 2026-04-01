@@ -42,7 +42,48 @@
     <button class="ctrl-btn" onclick="resetPlayerD()">Reset D's Questions</button>
     <button class="ctrl-btn" onclick="resetPlayerF()">Reset F's Questions</button>
     <button class="ctrl-btn" onclick="resetAllProgress()">Reset All Progress</button>
+    <button class="ctrl-btn" onclick="toggleHelp()">How to Play</button>
     <button class="sound-btn" id="sound-toggle" onclick="toggleSound()">🔊</button>
+  </div>
+
+  <!-- How to Play -->
+  <div class="help-panel hidden" id="help-panel">
+    <div class="help-content">
+      <h3>How to Play</h3>
+      <div class="help-grid">
+        <div class="help-item">
+          <div class="help-icon">🎯</div>
+          <div>
+            <strong>Take Turns</strong>
+            <p>Tap a cell on your opponent's grid to fire. Hits show 💥, misses show •</p>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-icon">🎲</div>
+          <div>
+            <strong>Hit = Question</strong>
+            <p>Every hit rolls a die. The roll determines the question depth: 1–2 Light, 3–4 Reflective, 5 Deep, 6 Vulnerable</p>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-icon">💬</div>
+          <div>
+            <strong>Answer or Skip</strong>
+            <p>The defender answers the question. Mark it "Answered" to track progress, or "Not Answered" to see it again later. Skip swaps for another question at the same level.</p>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-icon">💾</div>
+          <div>
+            <strong>Progress Saves</strong>
+            <p>Answered questions are remembered per player across games. Check the stats below to see your progress!</p>
+          </div>
+        </div>
+      </div>
+      <div class="help-ships">
+        <strong>Ships:</strong> Carrier (5) · Battleship (4) · Cruiser (3) · Submarine (3) · Destroyer (2)
+      </div>
+    </div>
   </div>
 
   <!-- Stats -->
@@ -54,6 +95,16 @@
     <div class="stats-panel">
       <h3>F's Question Progress</h3>
       <div id="stats-f"></div>
+    </div>
+  </div>
+
+  <!-- Pass-and-Play Handoff Screen -->
+  <div class="handoff-overlay hidden" id="handoff-screen">
+    <div class="handoff-content">
+      <p class="handoff-label">Pass the device to</p>
+      <div class="handoff-name handoff-d" id="handoff-player">D</div>
+      <p class="handoff-sub">Tap the button when you're ready</p>
+      <button class="handoff-btn" onclick="dismissHandoff()">I'm Ready</button>
     </div>
   </div>
 
