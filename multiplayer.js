@@ -82,13 +82,14 @@ class MultiplayerManager {
     players[player] = this.sessionId;
     state.players = players;
 
-    // Move to setup as soon as any role is claimed so players can place ships immediately.
-    // Gameplay only begins once BOTH players mark setup ready.
-    state.phase = 'setup';
-    state.setupState = state.setupState || {
-      D: { ready: false, placements: [] },
-      F: { ready: false, placements: [] }
-    };
+    // If both players joined, start the game
+    if (players.D && players.F) {
+      state.phase = 'setup';
+      state.setupState = state.setupState || {
+        D: { ready: false, placements: [] },
+        F: { ready: false, placements: [] }
+      };
+    }
 
     await this.pushState(state);
     this.localPlayer = player;

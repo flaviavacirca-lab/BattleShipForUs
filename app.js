@@ -248,7 +248,6 @@ function showSetupStage(state) {
   document.getElementById('help-panel').classList.add('hidden');
   document.getElementById('turn-indicator').textContent = 'Setup Stage';
   renderSetupUI(state);
-  updateSetupStepIndicators(state);
 }
 
 function hideSetupStage() {
@@ -537,41 +536,19 @@ function renderSetupFleet(state) {
 
   var readyBtn = document.getElementById('setup-ready-btn');
   var complete = isSetupCompleteForPlayer(localPlayer);
-  var placedCount = SHIPS.filter(function(ship) {
-    var p = getShipPlacement(ship.name);
-    return p && p.row !== null && p.col !== null;
-  }).length;
-  var progressText = document.getElementById('setup-progress-text');
-  progressText.textContent = 'Ships placed: ' + placedCount + ' / ' + SHIPS.length;
   readyBtn.disabled = mySetupState.ready || !complete;
-  readyBtn.textContent = mySetupState.ready ? 'Ready ✓' : "Step 3: I'm Ready";
-  readyBtn.classList.toggle('setup-ready-btn-active', !mySetupState.ready && complete);
+  readyBtn.textContent = mySetupState.ready ? 'Ready ✓' : 'Ready';
 
   var status = document.getElementById('setup-status-text');
   if (mySetupState.ready && waitingOn.length > 0) {
-    status.textContent = '✅ You are ready. Waiting on ' + waitingOn.join(' and ') + ' to finish setup...';
+    status.textContent = 'Waiting on ' + waitingOn.join(' and ') + ' to finish setup...';
   } else if (!complete) {
-    status.textContent = 'Place all ships to unlock Ready.';
+    status.textContent = 'Place all ships to continue.';
   } else if (waitingOn.length === 0) {
     status.textContent = 'Both players ready. Starting game...';
   } else {
-    status.textContent = 'All ships placed! Click "Step 3: I\'m Ready".';
+    status.textContent = 'All ships placed. Click Ready.';
   }
-  updateSetupStepIndicators(state);
-}
-
-function updateSetupStepIndicators(state) {
-  var step1 = document.getElementById('setup-step-1');
-  var step2 = document.getElementById('setup-step-2');
-  var step3 = document.getElementById('setup-step-3');
-  if (!step1 || !step2 || !step3) return;
-
-  var mySetupState = (state.setupState && state.setupState[localPlayer]) || { ready: false };
-  var placedComplete = isSetupCompleteForPlayer(localPlayer);
-
-  step1.className = 'setup-step done';
-  step2.className = 'setup-step ' + (placedComplete ? 'done' : 'active');
-  step3.className = 'setup-step ' + (mySetupState.ready ? 'done' : (placedComplete ? 'active' : ''));
 }
 
 function onSetupDrop(e) {
