@@ -35,7 +35,8 @@
       <!-- Room created — show code -->
       <div id="lobby-room-info" class="lobby-section hidden">
         <p class="lobby-label">Share this code with your partner:</p>
-        <div class="room-code-display" id="display-room-code"></div>
+        <div class="room-code-display" id="display-room-code" onclick="copyRoomCode()" title="Click to copy"></div>
+        <p class="copy-hint" id="copy-hint">Click to copy</p>
       </div>
 
       <!-- Role selection -->
@@ -74,16 +75,30 @@
 
     <!-- Setup Stage -->
     <div class="setup-stage hidden" id="setup-stage">
+      <!-- Step Indicator -->
+      <div class="step-indicator" id="step-indicator">
+        <div class="step completed" data-step="1"><span class="step-num">1</span><span class="step-label">Room</span></div>
+        <div class="step-line completed"></div>
+        <div class="step completed" data-step="2"><span class="step-num">2</span><span class="step-label">Role</span></div>
+        <div class="step-line completed"></div>
+        <div class="step active" data-step="3"><span class="step-num">3</span><span class="step-label">Place Ships</span></div>
+        <div class="step-line"></div>
+        <div class="step" data-step="4"><span class="step-num">4</span><span class="step-label">Play!</span></div>
+      </div>
+
       <div class="setup-layout">
         <div class="setup-panel setup-board-panel">
-          <h2>Your Board Setup</h2>
-          <p class="setup-hint">Drag ships from the right onto your board.</p>
+          <h2>Place Your Ships</h2>
+          <p class="setup-hint">Click on the grid to place the selected ship. Press <kbd>R</kbd> to rotate.</p>
           <div id="setup-board"></div>
         </div>
         <div class="setup-panel setup-fleet-panel">
           <h2>Your Fleet</h2>
-          <p class="setup-hint">Rotate each ship, then drag it onto the board.</p>
           <div id="setup-fleet"></div>
+          <div class="setup-actions">
+            <button class="ctrl-btn setup-action-btn" onclick="randomizePlacement()">Auto-Place</button>
+            <button class="ctrl-btn setup-action-btn" onclick="clearPlacement()">Clear All</button>
+          </div>
           <button id="setup-ready-btn" class="ctrl-btn setup-ready-btn" onclick="submitSetupReady()" disabled>
             Ready
           </button>

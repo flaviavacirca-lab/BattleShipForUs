@@ -9,6 +9,9 @@ let audioCtx = null;
 let diceAnimationInterval = null;
 let currentQuestionTrigger = null; // tracks which question trigger we've animated
 let setupDraft = null;              // local setup draft for current player
+let selectedShipIndex = 0;          // index into SHIPS for current ship being placed
+let placementHorizontal = true;     // current orientation for placement
+let hoverCells = [];                // cells currently showing hover preview
 
 // ═══════════════════════════════════════════════════════════
 // AUDIO
@@ -130,6 +133,30 @@ async function handleJoinRoom() {
   }
 }
 
+function copyRoomCode() {
+  var code = document.getElementById('display-room-code').textContent;
+  if (!code) return;
+  navigator.clipboard.writeText(code).then(function() {
+    var hint = document.getElementById('copy-hint');
+    if (hint) {
+      hint.textContent = 'Copied!';
+      hint.classList.add('copied');
+      setTimeout(function() {
+        hint.textContent = 'Click to copy';
+        hint.classList.remove('copied');
+      }, 2000);
+    }
+  }).catch(function() {
+    // Fallback for older browsers
+    var textarea = document.createElement('textarea');
+    textarea.value = code;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  });
+}
+
 function showRoleSelection(state) {
   const container = document.getElementById('lobby-role-selection');
   container.classList.remove('hidden');
@@ -246,7 +273,8 @@ function showSetupStage(state) {
   document.querySelector('.stats-area').classList.add('hidden');
   document.querySelector('.controls-bar').classList.add('hidden');
   document.getElementById('help-panel').classList.add('hidden');
-  document.getElementById('turn-indicator').textContent = 'Setup Stage';
+  document.getElementById('turn-indicator').textContent = 'Place Your Ships';
+  document.getElementById('turn-indicator').className = 'turn-indicator turn-' + (localPlayer || 'd').toLowerCase();
   renderSetupUI(state);
 }
 
@@ -396,6 +424,10 @@ function getShipPlacement(shipName) {
   return setupDraft[localPlayer][shipName] || null;
 }
 
+function getSelectedShip() {
+  return SHIPS[selectedShipIndex] || SHIPS[0];
+}
+
 function canPlaceSetupShip(ship, row, col, horizontal, ignoreShipName) {
   for (var i = 0; i < ship.size; i++) {
     var r = horizontal ? row : row + i;
@@ -420,33 +452,42 @@ function canPlaceSetupShip(ship, row, col, horizontal, ignoreShipName) {
   return true;
 }
 
+function getPlacementCells(ship, row, col, horizontal) {
+  var cells = [];
+  for (var i = 0; i < ship.size; i++) {
+    var r = horizontal ? row : row + i;
+    var c = horizontal ? col + i : col;
+    cells.push({ r: r, c: c });
+  }
+  return cells;
+}
+
 function placeSetupShip(shipName, row, col) {
   var ship = SHIPS.find(function(s) { return s.name === shipName; });
   if (!ship) return false;
-  var p = getShipPlacement(shipName);
-  var horizontal = p ? p.horizontal !== false : true;
-  if (!canPlaceSetupShip(ship, row, col, horizontal, shipName)) return false;
-  setupDraft[localPlayer][shipName] = { row: row, col: col, horizontal: horizontal };
+  if (!canPlaceSetupShip(ship, row, col, placementHorizontal, shipName)) return false;
+  setupDraft[localPlayer][shipName] = { row: row, col: col, horizontal: placementHorizontal };
   return true;
 }
 
-function toggleSetupShipOrientation(shipName) {
-  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
-  if (mySetupState.ready) return;
-  var ship = SHIPS.find(function(s) { return s.name === shipName; });
-  if (!ship) return;
-  var p = getShipPlacement(shipName) || { row: null, col: null, horizontal: true };
-  var nextHorizontal = !p.horizontal;
-  if (p.row !== null && p.col !== null) {
-    if (!canPlaceSetupShip(ship, p.row, p.col, nextHorizontal, shipName)) return;
+function selectNextUnplacedShip() {
+  // Find next unplaced ship after current index
+  for (var i = 0; i < SHIPS.length; i++) {
+    var idx = (selectedShipIndex + 1 + i) % SHIPS.length;
+    var p = getShipPlacement(SHIPS[idx].name);
+    if (!p || p.row === null || p.col === null) {
+      selectedShipIndex = idx;
+      return;
+    }
   }
-  setupDraft[localPlayer][shipName] = { row: p.row, col: p.col, horizontal: nextHorizontal };
-  renderSetupUI(mp.currentState);
+  // All placed, keep current
 }
 
 function renderSetupBoard() {
   var container = document.getElementById('setup-board');
   container.innerHTML = '';
+
+  // Build placement grid to know which cells have ships
   var placementGrid = Array.from({ length: BOARD_SIZE }, function() { return Array(BOARD_SIZE).fill(''); });
   SHIPS.forEach(function(ship) {
     var p = getShipPlacement(ship.name);
@@ -454,7 +495,7 @@ function renderSetupBoard() {
     for (var i = 0; i < ship.size; i++) {
       var r = p.horizontal ? p.row : p.row + i;
       var c = p.horizontal ? p.col + i : p.col;
-      placementGrid[r][c] = ship.name;
+      if (r < BOARD_SIZE && c < BOARD_SIZE) placementGrid[r][c] = ship.name;
     }
   });
 
@@ -465,6 +506,9 @@ function renderSetupBoard() {
     headerRow.innerHTML += '<div class="grid-cell header">' + (c + 1) + '</div>';
   }
   container.appendChild(headerRow);
+
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  var isReady = mySetupState.ready;
 
   for (var r = 0; r < BOARD_SIZE; r++) {
     var row = document.createElement('div');
@@ -479,13 +523,112 @@ function renderSetupBoard() {
         cell.classList.add('ship');
         cell.title = placementGrid[r][c2];
       }
-      cell.addEventListener('dragover', function(e) { e.preventDefault(); });
-      cell.addEventListener('drop', onSetupDrop);
+      if (!isReady) {
+        cell.addEventListener('click', onSetupCellClick);
+        cell.addEventListener('mouseenter', onSetupCellHover);
+        cell.addEventListener('mouseleave', clearHoverPreview);
+      }
       row.appendChild(cell);
     }
     container.appendChild(row);
   }
 }
+
+function onSetupCellClick(e) {
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  if (mySetupState.ready) return;
+
+  var row = Number(e.currentTarget.dataset.row);
+  var col = Number(e.currentTarget.dataset.col);
+  var ship = getSelectedShip();
+
+  if (placeSetupShip(ship.name, row, col)) {
+    selectNextUnplacedShip();
+    renderSetupUI(mp.currentState);
+  }
+}
+
+function onSetupCellHover(e) {
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  if (mySetupState.ready) return;
+
+  clearHoverPreview();
+  var row = Number(e.currentTarget.dataset.row);
+  var col = Number(e.currentTarget.dataset.col);
+  var ship = getSelectedShip();
+  var cells = getPlacementCells(ship, row, col, placementHorizontal);
+  var valid = canPlaceSetupShip(ship, row, col, placementHorizontal, ship.name);
+
+  var container = document.getElementById('setup-board');
+  cells.forEach(function(pos) {
+    if (pos.r >= BOARD_SIZE || pos.c >= BOARD_SIZE) return;
+    // Find the cell element: skip header row (+1), skip row header (+1)
+    var rowEl = container.children[pos.r + 1];
+    if (!rowEl) return;
+    var cellEl = rowEl.children[pos.c + 1];
+    if (!cellEl) return;
+    cellEl.classList.add(valid ? 'placement-preview-valid' : 'placement-preview-invalid');
+    hoverCells.push(cellEl);
+  });
+}
+
+function clearHoverPreview() {
+  hoverCells.forEach(function(el) {
+    el.classList.remove('placement-preview-valid', 'placement-preview-invalid');
+  });
+  hoverCells = [];
+}
+
+function togglePlacementRotation() {
+  placementHorizontal = !placementHorizontal;
+  // Re-render to update fleet display
+  if (mp && mp.currentState) renderSetupUI(mp.currentState);
+}
+
+function randomizePlacement() {
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  if (mySetupState.ready) return;
+
+  // Use Board.autoPlace to generate random placement, then copy into setupDraft
+  var tempBoard = new Board();
+  tempBoard.autoPlace();
+  if (!setupDraft) setupDraft = {};
+  setupDraft[localPlayer] = {};
+  tempBoard.ships.forEach(function(ship) {
+    var isHoriz = ship.cells[0].r === ship.cells[1].r;
+    setupDraft[localPlayer][ship.name] = {
+      row: ship.cells[0].r,
+      col: ship.cells[0].c,
+      horizontal: isHoriz
+    };
+  });
+  renderSetupUI(mp.currentState);
+}
+
+function clearPlacement() {
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  if (mySetupState.ready) return;
+
+  if (!setupDraft) setupDraft = {};
+  setupDraft[localPlayer] = {};
+  SHIPS.forEach(function(ship) {
+    setupDraft[localPlayer][ship.name] = { row: null, col: null, horizontal: true };
+  });
+  selectedShipIndex = 0;
+  placementHorizontal = true;
+  renderSetupUI(mp.currentState);
+}
+
+// Keyboard shortcut: R to rotate
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'r' || e.key === 'R') {
+    var setupStage = document.getElementById('setup-stage');
+    if (setupStage && !setupStage.classList.contains('hidden')) {
+      e.preventDefault();
+      togglePlacementRotation();
+    }
+  }
+});
 
 function isSetupCompleteForPlayer(player) {
   if (!setupDraft || !setupDraft[player]) return false;
@@ -505,62 +648,61 @@ function renderSetupFleet(state) {
   if (!both.D.ready) waitingOn.push('D');
   if (!both.F.ready) waitingOn.push('F');
 
-  SHIPS.forEach(function(ship) {
+  SHIPS.forEach(function(ship, index) {
     var p = getShipPlacement(ship.name) || { row: null, col: null, horizontal: true };
     var placed = p.row !== null && p.col !== null;
+    var isSelected = index === selectedShipIndex;
     var card = document.createElement('div');
-    card.className = 'setup-ship-card' + (placed ? ' placed' : '');
-    card.draggable = !mySetupState.ready;
-    card.dataset.shipName = ship.name;
-    card.addEventListener('dragstart', function(e) {
-      e.dataTransfer.setData('text/plain', ship.name);
-    });
-    var orient = p.horizontal ? 'Horizontal' : 'Vertical';
+    card.className = 'setup-ship-card' + (placed ? ' placed' : '') + (isSelected ? ' selected' : '');
+    card.dataset.shipIndex = index;
+
+    if (!mySetupState.ready) {
+      card.addEventListener('click', function() {
+        selectedShipIndex = index;
+        renderSetupUI(mp.currentState);
+      });
+    }
+
+    var placedLabel = placed
+      ? '<span class="setup-placed-label is-placed">Placed</span>'
+      : '<span class="setup-placed-label">Not placed</span>';
+
     card.innerHTML =
       '<div class="setup-ship-row">' +
       '  <strong>' + ship.name + '</strong>' +
-      '  <span class="setup-ship-size">(' + ship.size + ')</span>' +
+      '  ' + placedLabel +
       '</div>' +
-      '<div class="setup-ship-row">' +
-      '  <span>' + orient + '</span>' +
-      (placed ? '<span class="setup-placed-label">Placed</span>' : '<span class="setup-placed-label">Not placed</span>') +
+      '<div class="setup-ship-pips">' +
+      Array.from({ length: ship.size }, function() { return '<span class="pip"></span>'; }).join('') +
       '</div>';
-    var rotateBtn = document.createElement('button');
-    rotateBtn.className = 'ctrl-btn setup-rotate-btn';
-    rotateBtn.textContent = 'Rotate';
-    rotateBtn.disabled = mySetupState.ready;
-    rotateBtn.onclick = function() { toggleSetupShipOrientation(ship.name); };
-    card.appendChild(rotateBtn);
+
     fleetEl.appendChild(card);
   });
+
+  // Orientation indicator
+  var orientEl = document.createElement('div');
+  orientEl.style.cssText = 'text-align:center;margin-top:8px;font-size:0.8rem;color:var(--text-dim)';
+  orientEl.innerHTML = 'Orientation: <strong>' + (placementHorizontal ? 'Horizontal' : 'Vertical') + '</strong> <span style="opacity:0.5">(press R)</span>';
+  fleetEl.appendChild(orientEl);
 
   var readyBtn = document.getElementById('setup-ready-btn');
   var complete = isSetupCompleteForPlayer(localPlayer);
   readyBtn.disabled = mySetupState.ready || !complete;
-  readyBtn.textContent = mySetupState.ready ? 'Ready ✓' : 'Ready';
+  readyBtn.textContent = mySetupState.ready ? 'Ready' : (complete ? 'Ready' : 'Place all ships first');
 
   var status = document.getElementById('setup-status-text');
   if (mySetupState.ready && waitingOn.length > 0) {
     status.textContent = 'Waiting on ' + waitingOn.join(' and ') + ' to finish setup...';
   } else if (!complete) {
-    status.textContent = 'Place all ships to continue.';
+    var remaining = SHIPS.filter(function(s) {
+      var pl = getShipPlacement(s.name);
+      return !pl || pl.row === null;
+    }).length;
+    status.textContent = remaining + ' ship' + (remaining !== 1 ? 's' : '') + ' remaining.';
   } else if (waitingOn.length === 0) {
     status.textContent = 'Both players ready. Starting game...';
   } else {
-    status.textContent = 'All ships placed. Click Ready.';
-  }
-}
-
-function onSetupDrop(e) {
-  e.preventDefault();
-  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
-  if (mySetupState.ready) return;
-  var shipName = e.dataTransfer.getData('text/plain');
-  var row = Number(e.currentTarget.dataset.row);
-  var col = Number(e.currentTarget.dataset.col);
-  if (!shipName || Number.isNaN(row) || Number.isNaN(col)) return;
-  if (placeSetupShip(shipName, row, col)) {
-    renderSetupUI(mp.currentState);
+    status.textContent = 'All ships placed! Click Ready when you\'re set.';
   }
 }
 
@@ -1006,6 +1148,9 @@ async function newGame() {
     setupState: createDefaultSetupState()
   });
   setupDraft = null;
+  selectedShipIndex = 0;
+  placementHorizontal = true;
+  hoverCells = [];
   mp.pushState(state);
 }
 
