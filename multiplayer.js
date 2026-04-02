@@ -84,7 +84,11 @@ class MultiplayerManager {
 
     // If both players joined, start the game
     if (players.D && players.F) {
-      state.phase = 'playing';
+      state.phase = 'setup';
+      state.setupState = state.setupState || {
+        D: { ready: false, placements: [] },
+        F: { ready: false, placements: [] }
+      };
     }
 
     await this.pushState(state);
@@ -127,7 +131,22 @@ class MultiplayerManager {
     const { data, error } = await this.supabase
       .from('profiles')
       .select('*');
-    if (error) throw error;
+
+    // Graceful fallback for projects that haven't run schema.sql yet.
+    // The game can still run using in-memory defaults.
+    if (error) {
+      const msg = (error.message || '').toLowerCase();
+      if (
+        error.code === 'PGRST205' ||
+        msg.includes("could not find the table 'public.profiles'") ||
+        msg.includes('relation "public.profiles" does not exist')
+      ) {
+        console.warn('profiles table missing; using default empty profiles.', error);
+        return { D: [], F: [] };
+      }
+      throw error;
+    }
+
     const profiles = { D: [], F: [] };
     if (data) {
       data.forEach(row => {
@@ -146,7 +165,18 @@ class MultiplayerManager {
         answered: answered,
         updated_at: new Date().toISOString()
       });
-    if (error) throw error;
+    if (error) {
+      const msg = (error.message || '').toLowerCase();
+      if (
+        error.code === 'PGRST205' ||
+        msg.includes("could not find the table 'public.profiles'") ||
+        msg.includes('relation "public.profiles" does not exist')
+      ) {
+        console.warn('profiles table missing; skipping profile persistence.', error);
+        return;
+      }
+      throw error;
+    }
   }
 
   // Try to reconnect from a previous session
