@@ -72,8 +72,48 @@
     <!-- Floating message -->
     <div class="float-message" id="float-message"></div>
 
+    <!-- Setup Stage -->
+    <div class="setup-stage hidden" id="setup-stage">
+      <div class="setup-flow-card">
+        <div class="setup-flow-title">Pre-Game Setup</div>
+        <p class="setup-flow-subtitle">Place your fleet, then mark ready. The match starts when both players are ready.</p>
+        <div class="setup-steps" id="setup-steps">
+          <div class="setup-step" id="setup-step-1">
+            <span class="setup-step-num">1</span>
+            <span class="setup-step-label">Pick Player</span>
+          </div>
+          <div class="setup-step" id="setup-step-2">
+            <span class="setup-step-num">2</span>
+            <span class="setup-step-label">Place Fleet</span>
+          </div>
+          <div class="setup-step" id="setup-step-3">
+            <span class="setup-step-num">3</span>
+            <span class="setup-step-label">Ready & Wait</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-layout">
+        <div class="setup-panel setup-board-panel">
+          <h2>Step 2: Place Your Ships</h2>
+          <p class="setup-hint">Drag a ship from the right and drop it on your board. Ships cannot overlap.</p>
+          <div id="setup-board"></div>
+        </div>
+        <div class="setup-panel setup-fleet-panel">
+          <h2>Fleet Controls</h2>
+          <p class="setup-hint">Use <strong>Rotate</strong> to switch horizontal/vertical, then drag onto the board.</p>
+          <p id="setup-progress-text" class="setup-progress-text"></p>
+          <div id="setup-fleet"></div>
+          <button id="setup-ready-btn" class="ctrl-btn setup-ready-btn" onclick="submitSetupReady()" disabled>
+            Step 3: I'm Ready
+          </button>
+          <p id="setup-status-text" class="setup-status-text"></p>
+        </div>
+      </div>
+    </div>
+
     <!-- Game Boards -->
-    <div class="game-area">
+    <div class="game-area" id="game-area">
       <div class="board-section" id="section-d">
         <div class="board-label">D's Fleet</div>
         <div id="board-d"></div>

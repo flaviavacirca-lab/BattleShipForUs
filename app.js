@@ -8,6 +8,7 @@ let soundEnabled = true;
 let audioCtx = null;
 let diceAnimationInterval = null;
 let currentQuestionTrigger = null; // tracks which question trigger we've animated
+let setupDraft = null;              // local setup draft for current player
 
 // ═══════════════════════════════════════════════════════════
 // AUDIO
@@ -90,6 +91,7 @@ async function handleCreateRoom() {
       ...tempGame.serialize(),
       players: {},
       phase: 'waiting',
+      setupState: createDefaultSetupState(),
       questionState: null,
       answeredD: profiles.D,
       answeredF: profiles.F,
@@ -157,7 +159,7 @@ async function handleSelectRole(player) {
     localPlayer = player;
     mp.subscribe(onRemoteStateUpdate);
     const state = mp.currentState;
-    if (state.phase === 'playing' || state.phase === 'question' || state.phase === 'gameover') {
+    if (state.phase === 'setup' || state.phase === 'playing' || state.phase === 'question' || state.phase === 'gameover') {
       enterGame(state);
     } else {
       document.getElementById('lobby-role-selection').classList.add('hidden');
@@ -212,10 +214,15 @@ function applyState(state) {
   }
 
   // Render boards and UI
-  renderBoards();
-  updateTurnIndicator();
-  updateShipStatus();
-  updateStats();
+  if (state.phase === 'setup') {
+    showSetupStage(state);
+  } else {
+    hideSetupStage();
+    renderBoards();
+    updateTurnIndicator();
+    updateShipStatus();
+    updateStats();
+  }
 
   // Handle question state
   if (state.questionState && state.questionState.active) {
@@ -231,6 +238,24 @@ function applyState(state) {
   } else {
     document.getElementById('game-over-overlay').classList.add('hidden');
   }
+}
+
+function showSetupStage(state) {
+  document.getElementById('setup-stage').classList.remove('hidden');
+  document.getElementById('game-area').classList.add('hidden');
+  document.querySelector('.stats-area').classList.add('hidden');
+  document.querySelector('.controls-bar').classList.add('hidden');
+  document.getElementById('help-panel').classList.add('hidden');
+  document.getElementById('turn-indicator').textContent = 'Setup Stage';
+  renderSetupUI(state);
+  updateSetupStepIndicators(state);
+}
+
+function hideSetupStage() {
+  document.getElementById('setup-stage').classList.add('hidden');
+  document.getElementById('game-area').classList.remove('hidden');
+  document.querySelector('.stats-area').classList.remove('hidden');
+  document.querySelector('.controls-bar').classList.remove('hidden');
 }
 
 function animateAction(action) {
@@ -331,6 +356,282 @@ function highlightActiveBoard() {
     document.querySelector("#section-d .board-label").textContent =
       isMyTurn ? "D's Fleet \u2014 tap to fire!" : "D's Fleet";
   }
+}
+
+function createDefaultSetupState() {
+  return {
+    D: { ready: false, placements: [] },
+    F: { ready: false, placements: [] }
+  };
+}
+
+function initializeSetupDraftFromState(state) {
+  if (!setupDraft) setupDraft = {};
+  var fromState = (((state.setupState || {})[localPlayer] || {}).placements) || [];
+  setupDraft[localPlayer] = {};
+  SHIPS.forEach(function(ship) {
+    setupDraft[localPlayer][ship.name] = { row: null, col: null, horizontal: true };
+  });
+  fromState.forEach(function(p) {
+    setupDraft[localPlayer][p.name] = {
+      row: p.row,
+      col: p.col,
+      horizontal: p.horizontal !== false
+    };
+  });
+}
+
+function renderSetupUI(state) {
+  if (!state.setupState) {
+    state.setupState = createDefaultSetupState();
+  }
+  if (!setupDraft || !setupDraft[localPlayer]) {
+    initializeSetupDraftFromState(state);
+  }
+  renderSetupBoard();
+  renderSetupFleet(state);
+}
+
+function getShipPlacement(shipName) {
+  if (!setupDraft || !setupDraft[localPlayer]) return null;
+  return setupDraft[localPlayer][shipName] || null;
+}
+
+function canPlaceSetupShip(ship, row, col, horizontal, ignoreShipName) {
+  for (var i = 0; i < ship.size; i++) {
+    var r = horizontal ? row : row + i;
+    var c = horizontal ? col + i : col;
+    if (r >= BOARD_SIZE || c >= BOARD_SIZE) return false;
+  }
+  for (var s = 0; s < SHIPS.length; s++) {
+    var otherShip = SHIPS[s];
+    if (ignoreShipName && otherShip.name === ignoreShipName) continue;
+    var placement = getShipPlacement(otherShip.name);
+    if (!placement || placement.row === null || placement.col === null) continue;
+    for (var a = 0; a < ship.size; a++) {
+      var rr = horizontal ? row : row + a;
+      var cc = horizontal ? col + a : col;
+      for (var b = 0; b < otherShip.size; b++) {
+        var or = placement.horizontal ? placement.row : placement.row + b;
+        var oc = placement.horizontal ? placement.col + b : placement.col;
+        if (rr === or && cc === oc) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function placeSetupShip(shipName, row, col) {
+  var ship = SHIPS.find(function(s) { return s.name === shipName; });
+  if (!ship) return false;
+  var p = getShipPlacement(shipName);
+  var horizontal = p ? p.horizontal !== false : true;
+  if (!canPlaceSetupShip(ship, row, col, horizontal, shipName)) return false;
+  setupDraft[localPlayer][shipName] = { row: row, col: col, horizontal: horizontal };
+  return true;
+}
+
+function toggleSetupShipOrientation(shipName) {
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  if (mySetupState.ready) return;
+  var ship = SHIPS.find(function(s) { return s.name === shipName; });
+  if (!ship) return;
+  var p = getShipPlacement(shipName) || { row: null, col: null, horizontal: true };
+  var nextHorizontal = !p.horizontal;
+  if (p.row !== null && p.col !== null) {
+    if (!canPlaceSetupShip(ship, p.row, p.col, nextHorizontal, shipName)) return;
+  }
+  setupDraft[localPlayer][shipName] = { row: p.row, col: p.col, horizontal: nextHorizontal };
+  renderSetupUI(mp.currentState);
+}
+
+function renderSetupBoard() {
+  var container = document.getElementById('setup-board');
+  container.innerHTML = '';
+  var placementGrid = Array.from({ length: BOARD_SIZE }, function() { return Array(BOARD_SIZE).fill(''); });
+  SHIPS.forEach(function(ship) {
+    var p = getShipPlacement(ship.name);
+    if (!p || p.row === null || p.col === null) return;
+    for (var i = 0; i < ship.size; i++) {
+      var r = p.horizontal ? p.row : p.row + i;
+      var c = p.horizontal ? p.col + i : p.col;
+      placementGrid[r][c] = ship.name;
+    }
+  });
+
+  var headerRow = document.createElement('div');
+  headerRow.className = 'grid-row header-row';
+  headerRow.innerHTML = '<div class="grid-cell corner"></div>';
+  for (var c = 0; c < BOARD_SIZE; c++) {
+    headerRow.innerHTML += '<div class="grid-cell header">' + (c + 1) + '</div>';
+  }
+  container.appendChild(headerRow);
+
+  for (var r = 0; r < BOARD_SIZE; r++) {
+    var row = document.createElement('div');
+    row.className = 'grid-row';
+    row.innerHTML = '<div class="grid-cell header">' + String.fromCharCode(65 + r) + '</div>';
+    for (var c2 = 0; c2 < BOARD_SIZE; c2++) {
+      var cell = document.createElement('div');
+      cell.className = 'grid-cell setup-cell';
+      cell.dataset.row = r;
+      cell.dataset.col = c2;
+      if (placementGrid[r][c2]) {
+        cell.classList.add('ship');
+        cell.title = placementGrid[r][c2];
+      }
+      cell.addEventListener('dragover', function(e) { e.preventDefault(); });
+      cell.addEventListener('drop', onSetupDrop);
+      row.appendChild(cell);
+    }
+    container.appendChild(row);
+  }
+}
+
+function isSetupCompleteForPlayer(player) {
+  if (!setupDraft || !setupDraft[player]) return false;
+  return SHIPS.every(function(ship) {
+    var p = setupDraft[player][ship.name];
+    return p && p.row !== null && p.col !== null;
+  });
+}
+
+function renderSetupFleet(state) {
+  var fleetEl = document.getElementById('setup-fleet');
+  fleetEl.innerHTML = '';
+
+  var mySetupState = (state.setupState && state.setupState[localPlayer]) || { ready: false, placements: [] };
+  var both = state.setupState || createDefaultSetupState();
+  var waitingOn = [];
+  if (!both.D.ready) waitingOn.push('D');
+  if (!both.F.ready) waitingOn.push('F');
+
+  SHIPS.forEach(function(ship) {
+    var p = getShipPlacement(ship.name) || { row: null, col: null, horizontal: true };
+    var placed = p.row !== null && p.col !== null;
+    var card = document.createElement('div');
+    card.className = 'setup-ship-card' + (placed ? ' placed' : '');
+    card.draggable = !mySetupState.ready;
+    card.dataset.shipName = ship.name;
+    card.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('text/plain', ship.name);
+    });
+    var orient = p.horizontal ? 'Horizontal' : 'Vertical';
+    card.innerHTML =
+      '<div class="setup-ship-row">' +
+      '  <strong>' + ship.name + '</strong>' +
+      '  <span class="setup-ship-size">(' + ship.size + ')</span>' +
+      '</div>' +
+      '<div class="setup-ship-row">' +
+      '  <span>' + orient + '</span>' +
+      (placed ? '<span class="setup-placed-label">Placed</span>' : '<span class="setup-placed-label">Not placed</span>') +
+      '</div>';
+    var rotateBtn = document.createElement('button');
+    rotateBtn.className = 'ctrl-btn setup-rotate-btn';
+    rotateBtn.textContent = 'Rotate';
+    rotateBtn.disabled = mySetupState.ready;
+    rotateBtn.onclick = function() { toggleSetupShipOrientation(ship.name); };
+    card.appendChild(rotateBtn);
+    fleetEl.appendChild(card);
+  });
+
+  var readyBtn = document.getElementById('setup-ready-btn');
+  var complete = isSetupCompleteForPlayer(localPlayer);
+  var placedCount = SHIPS.filter(function(ship) {
+    var p = getShipPlacement(ship.name);
+    return p && p.row !== null && p.col !== null;
+  }).length;
+  var progressText = document.getElementById('setup-progress-text');
+  progressText.textContent = 'Ships placed: ' + placedCount + ' / ' + SHIPS.length;
+  readyBtn.disabled = mySetupState.ready || !complete;
+  readyBtn.textContent = mySetupState.ready ? 'Ready ✓' : "Step 3: I'm Ready";
+  readyBtn.classList.toggle('setup-ready-btn-active', !mySetupState.ready && complete);
+
+  var status = document.getElementById('setup-status-text');
+  if (mySetupState.ready && waitingOn.length > 0) {
+    status.textContent = '✅ You are ready. Waiting on ' + waitingOn.join(' and ') + ' to finish setup...';
+  } else if (!complete) {
+    status.textContent = 'Place all ships to unlock Ready.';
+  } else if (waitingOn.length === 0) {
+    status.textContent = 'Both players ready. Starting game...';
+  } else {
+    status.textContent = 'All ships placed! Click "Step 3: I\'m Ready".';
+  }
+  updateSetupStepIndicators(state);
+}
+
+function updateSetupStepIndicators(state) {
+  var step1 = document.getElementById('setup-step-1');
+  var step2 = document.getElementById('setup-step-2');
+  var step3 = document.getElementById('setup-step-3');
+  if (!step1 || !step2 || !step3) return;
+
+  var mySetupState = (state.setupState && state.setupState[localPlayer]) || { ready: false };
+  var placedComplete = isSetupCompleteForPlayer(localPlayer);
+
+  step1.className = 'setup-step done';
+  step2.className = 'setup-step ' + (placedComplete ? 'done' : 'active');
+  step3.className = 'setup-step ' + (mySetupState.ready ? 'done' : (placedComplete ? 'active' : ''));
+}
+
+function onSetupDrop(e) {
+  e.preventDefault();
+  var mySetupState = (mp.currentState.setupState && mp.currentState.setupState[localPlayer]) || { ready: false };
+  if (mySetupState.ready) return;
+  var shipName = e.dataTransfer.getData('text/plain');
+  var row = Number(e.currentTarget.dataset.row);
+  var col = Number(e.currentTarget.dataset.col);
+  if (!shipName || Number.isNaN(row) || Number.isNaN(col)) return;
+  if (placeSetupShip(shipName, row, col)) {
+    renderSetupUI(mp.currentState);
+  }
+}
+
+function buildBoardFromPlacements(placements) {
+  var board = new Board();
+  board.grid = Array.from({ length: BOARD_SIZE }, function() { return Array(BOARD_SIZE).fill(CELL_EMPTY); });
+  board.ships = [];
+  for (var i = 0; i < placements.length; i++) {
+    var p = placements[i];
+    var ship = SHIPS.find(function(s) { return s.name === p.name; });
+    if (!ship || !board.placeShip(ship, p.row, p.col, p.horizontal !== false)) {
+      return null;
+    }
+  }
+  return board;
+}
+
+async function submitSetupReady() {
+  var state = mp.currentState;
+  if (!state.setupState) state.setupState = createDefaultSetupState();
+  if (!isSetupCompleteForPlayer(localPlayer)) return;
+
+  var placements = SHIPS.map(function(ship) {
+    var p = setupDraft[localPlayer][ship.name];
+    return { name: ship.name, row: p.row, col: p.col, horizontal: p.horizontal !== false };
+  });
+  state.setupState[localPlayer] = { ready: true, placements: placements };
+
+  if (state.setupState.D.ready && state.setupState.F.ready) {
+    var boardD = buildBoardFromPlacements(state.setupState.D.placements);
+    var boardF = buildBoardFromPlacements(state.setupState.F.placements);
+    if (!boardD || !boardF) {
+      alert('Invalid ship placements detected. Please re-check setup.');
+      return;
+    }
+    state.boardD = boardD.serialize();
+    state.boardF = boardF.serialize();
+    state.currentPlayer = 'D';
+    state.phase = 'playing';
+    state.winner = null;
+    state.questionState = null;
+    state.lastAction = null;
+  } else {
+    state.phase = 'setup';
+  }
+
+  await mp.pushState(state);
+  applyState(state);
 }
 
 function updateTurnIndicator() {
@@ -718,14 +1019,16 @@ async function resetAllProgress() {
 }
 
 async function newGame() {
-  if (!confirm('Start a new game? (Question progress is kept)')) return;
+  if (!confirm('Start a new game? (Question progress is kept, but both players must re-place ships)')) return;
   var tempGame = new BattleshipGame();
   var state = Object.assign({}, mp.currentState, tempGame.serialize(), {
-    phase: 'playing',
+    phase: 'setup',
     winner: null,
     questionState: null,
-    lastAction: null
+    lastAction: null,
+    setupState: createDefaultSetupState()
   });
+  setupDraft = null;
   mp.pushState(state);
 }
 
