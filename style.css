@@ -115,6 +115,10 @@ body {
   box-shadow: 0 0 20px rgba(233, 69, 96, 0.2);
 }
 
+.game-area.hidden {
+  display: none;
+}
+
 .board-label {
   text-align: center;
   font-size: 1.1rem;
@@ -200,6 +204,90 @@ body {
 .ship-list {
   margin-top: 10px;
   min-height: 120px;
+}
+
+/* Setup stage */
+.setup-stage {
+  max-width: 1100px;
+  margin: 10px auto 20px;
+  padding: 0 20px;
+}
+
+.setup-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 20px;
+}
+
+.setup-panel {
+  background: var(--bg-light);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.setup-panel h2 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.setup-hint {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+}
+
+.setup-cell {
+  cursor: copy;
+}
+
+.setup-cell:hover {
+  background: var(--cell-hover);
+}
+
+.setup-ship-card {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.02);
+}
+
+.setup-ship-card.placed {
+  border-color: rgba(78, 205, 196, 0.8);
+}
+
+.setup-ship-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.setup-ship-size,
+.setup-placed-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.setup-rotate-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.setup-ready-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+}
+
+.setup-status-text {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin-top: 8px;
+  min-height: 1.2em;
 }
 
 .ship-status {
@@ -508,6 +596,7 @@ body {
   .game-area { flex-direction: column; align-items: center; gap: 15px; }
   .grid-cell { width: 32px; height: 32px; }
   .header h1 { font-size: 1.5rem; }
+  .setup-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 500px) {
