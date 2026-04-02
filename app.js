@@ -159,7 +159,7 @@ async function handleSelectRole(player) {
     localPlayer = player;
     mp.subscribe(onRemoteStateUpdate);
     const state = mp.currentState;
-    if (state.phase === 'playing' || state.phase === 'question' || state.phase === 'gameover') {
+    if (state.phase === 'setup' || state.phase === 'playing' || state.phase === 'question' || state.phase === 'gameover') {
       enterGame(state);
     } else {
       document.getElementById('lobby-role-selection').classList.add('hidden');
