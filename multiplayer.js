@@ -27,6 +27,15 @@ class MultiplayerManager {
     this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
+  // Detect a network-level failure (server unreachable, e.g. paused Supabase project)
+  _isNetworkError(err) {
+    const msg = ((err && err.message) || '').toLowerCase();
+    return msg.includes('failed to fetch') ||
+           msg.includes('networkerror') ||
+           msg.includes('load failed') ||
+           msg.includes('could not reach');
+  }
+
   _generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -40,7 +49,10 @@ class MultiplayerManager {
     const { error } = await this.supabase
       .from('games')
       .insert({ id: this.roomId, state: initialState });
-    if (error) throw new Error('Failed to create room: ' + error.message);
+    if (error) {
+      if (this._isNetworkError(error)) throw new Error('Could not reach the game server.');
+      throw new Error('Failed to create room: ' + error.message);
+    }
     this.currentState = initialState;
     localStorage.setItem('bdn_room_id', this.roomId);
     return this.roomId;
@@ -54,6 +66,9 @@ class MultiplayerManager {
       .select('state')
       .eq('id', this.roomId)
       .single();
+    if (error && this._isNetworkError(error)) {
+      throw new Error('Could not reach the game server.');
+    }
     if (error || !data) throw new Error('Room not found: ' + this.roomId);
     this.currentState = data.state;
     localStorage.setItem('bdn_room_id', this.roomId);

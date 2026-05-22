@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     mp.init();
   } catch (e) {
-    document.getElementById('lobby-error').textContent = e.message;
+    document.getElementById('lobby-error').textContent = friendlyError(e);
     showLobby();
     return;
   }
@@ -72,6 +72,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ═══════════════════════════════════════════════════════════
 // LOBBY
 // ═══════════════════════════════════════════════════════════
+
+// Translate raw errors into user-facing lobby messages.
+function friendlyError(e) {
+  var msg = (e && e.message) || String(e);
+  if (/failed to fetch|networkerror|load failed|could not reach/i.test(msg)) {
+    return 'Can’t reach the game server. The Supabase project may be paused — ' +
+           'open supabase.com/dashboard, restore the project, then reload this page.';
+  }
+  return msg;
+}
 
 function showLobby() {
   document.getElementById('lobby-screen').classList.remove('hidden');
@@ -107,7 +117,7 @@ async function handleCreateRoom() {
     document.getElementById('display-room-code').textContent = roomId;
     showRoleSelection(initialState);
   } catch (e) {
-    document.getElementById('lobby-error').textContent = e.message;
+    document.getElementById('lobby-error').textContent = friendlyError(e);
     btn.disabled = false;
     btn.textContent = 'Create Room';
   }
@@ -127,9 +137,9 @@ async function handleJoinRoom() {
     document.getElementById('display-room-code').textContent = code;
     showRoleSelection(state);
   } catch (e) {
-    document.getElementById('lobby-error').textContent = 'Room not found: ' + code;
+    document.getElementById('lobby-error').textContent = friendlyError(e);
     btn.disabled = false;
-    btn.textContent = 'Join Room';
+    btn.textContent = 'Join';
   }
 }
 
